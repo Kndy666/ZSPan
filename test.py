@@ -1,39 +1,32 @@
-# GPL License
-# Copyright (C) 2023 , UESTC
-# All Rights Reserved
-#
-# @Time    : 2023/10/1 20:29
-# @Author  : Qi Cao
 import argparse
 import h5py
+import torch
 from Toolbox.model_RSP import FusionNet
-from Toolbox.indexes import *
 import scipy.io as sio
+import numpy as np
+import os
+from tqdm import tqdm
 
 # ================== Pre-Define =================== #
 parser = argparse.ArgumentParser()
-parser.add_argument("--satellite", type=str, default='wv3/', help="Satellite type")
-parser.add_argument("--name", type=int, required=True, help="Data ID (0-19)")
+parser.add_argument("--satellite", type=str, default='wv3', help="Satellite type")
+parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
 args = parser.parse_args()
 
 satellite = args.satellite
-name = args.name
-ckpt = f'model_FUG/{satellite}{name}'
+file_path = args.file_path
 
 model = FusionNet()
-weight = torch.load(ckpt)
-model.load_state_dict(weight)
-
 
 ###################################################################
-# ------------------- Main Test (Run second)----------------------------------
+# ------------------- Main Test (Run second)---------------------- #
 ###################################################################
 
+def test(name):
+    ckpt = os.path.join('model', satellite, str(name), 'model_FUG.pth')
+    weight = torch.load(ckpt)
+    model.load_state_dict(weight)
 
-def test():
-    print("Test...")
-
-    file_path = 'dataset/' + satellite + 'train.h5'
     dataset = h5py.File(file_path, 'r')
     ms = np.array(dataset['ms'][name], dtype=np.float32) / 2047.0
     lms = np.array(dataset['lms'][name], dtype=np.float32) / 2047.0
@@ -49,22 +42,20 @@ def test():
 
     res = model(lms, pan)
     out = res + lms
-    sr = torch.squeeze(out * 2047).permute(1, 2, 0).cpu().detach().numpy()
-    I_pan = torch.squeeze(pan * 2047).cpu().detach().numpy()
-    I_ms = torch.squeeze(lms * 2047).permute(1, 2, 0).cpu().detach().numpy()
-    I_ms_lr = torch.squeeze(ms * 2047).permute(1, 2, 0).cpu().detach().numpy()
 
-    I_SR = torch.squeeze(out*2047).permute(1, 2, 0).cpu().detach().numpy()  # HxWxC
-    I_MS_LR = torch.squeeze(ms*2047).permute(1, 2, 0).cpu().detach().numpy()  # HxWxC
-    I_MS = torch.squeeze(lms*2047).permute(1, 2, 0).cpu().detach().numpy()  # HxWxC
-    I_PAN = torch.squeeze(pan*2047).cpu().detach().numpy()  # HxWxC
+    I_SR = torch.squeeze(out * 2047).permute(1, 2, 0).cpu().detach().numpy()  # HxWxC
 
-    sio.savemat('result/' + satellite + str(name) + '.mat', {'I_SR': I_SR, 'I_MS_LR': I_MS_LR, 'I_MS': I_MS, 'I_PAN': I_PAN})
+    save_path = os.path.join('result', satellite)
+    os.makedirs(save_path, exist_ok=True)
+    sio.savemat(os.path.join(save_path, f"output_mulExm_{str(name)}.mat"), {'sr': I_SR})
 
 ###################################################################
-# ------------------- Main Function (Run first) -------------------
+# ------------------- Main Function (Run first) ------------------- #
 ###################################################################
-
 
 if __name__ == "__main__":
-    test()
+    tqdm.write("Run test...")
+    with tqdm(range(20), desc="Samples", colour="blue") as sample_progress:
+        for name in sample_progress:
+            sample_progress.set_description(f"Sample {name}")
+            test(name)

@@ -32,7 +32,7 @@ parser.add_argument("--epochs", type=int, default=50, help="Number of epochs")
 parser.add_argument("--ckpt", type=int, default=1000, help="Checkpoint interval")
 parser.add_argument("--batch_size", type=int, default=1, help="Batch size")
 parser.add_argument("--device", type=str, default='cuda', help="Device to use")
-parser.add_argument("--name", type=int, required=True, help="Data ID (0-19)")
+parser.add_argument("--name", type=int, default=19, help="Data ID (0-19)")
 parser.add_argument("--satellite", type=str, default='wv3/', help="Satellite type")
 args = parser.parse_args()
 
@@ -112,7 +112,7 @@ def train(training_data_loader, name):
 
 
 if __name__ == "__main__":
-    train_set = Dataset('dataset/' + satellite + 'train.h5', name)
+    train_set = Dataset(r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", name)
     training_data_loader = DataLoader(dataset=train_set, num_workers=0, batch_size=batch_size, shuffle=True,
                                       pin_memory=True,
                                       drop_last=True)  # put training data to DataLoader for batches
