@@ -24,7 +24,7 @@ cudnn.deterministic = True
 parser = argparse.ArgumentParser()
 parser.add_argument("--lr_fug", type=float, default=0.0005, help="Learning rate for FUG")
 parser.add_argument("--lr_rsp", type=float, default=0.001, help="Learning rate for RSP")
-parser.add_argument("--epochs", type=int, default=140, help="Number of epochs for both FUG and RSP")
+parser.add_argument("--epochs", type=int, default=250, help="Number of epochs for both FUG and RSP")
 parser.add_argument("--device", type=str, default='cuda', help="Device to use (e.g., 'cuda' or 'cpu')")
 parser.add_argument("--satellite", type=str, default='wv3/', help="Satellite type")
 parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
@@ -110,20 +110,24 @@ def train_combined(training_data_loader, name, satellite):
             # Compute Epoch Loss
             if epoch_train_loss_FUG:
                 t_loss_FUG = np.nanmean(np.array(epoch_train_loss_FUG))
-                if t_loss_FUG < min_loss_FUG:
-                    min_loss_FUG = t_loss_FUG
-                    save_checkpoint(model, name, satellite, "FUG")
+            else:
+                t_loss_FUG = np.nan
+            if t_loss_FUG < min_loss_FUG:
+                min_loss_FUG = t_loss_FUG
+                save_checkpoint(model, name, satellite, "FUG")
 
             if epoch_train_loss_RSP:
                 t_loss_RSP = np.nanmean(np.array(epoch_train_loss_RSP))
-                if t_loss_RSP < min_loss_RSP:
-                    min_loss_RSP = t_loss_RSP
-                    save_checkpoint(model, name, satellite, "RSP")
+            else:
+                t_loss_RSP = np.nan
+            if t_loss_RSP < min_loss_RSP:
+                min_loss_RSP = t_loss_RSP
+                save_checkpoint(model, name, satellite, "RSP")
 
             if epoch % 10 == 0:
                 epoch_progress.write(f"Sample {name} FUG Loss: {min_loss_FUG:.6f} RSP Loss: {min_loss_RSP:.6f}")
             epoch_progress.set_postfix(FUG_loss=f"{t_loss_FUG:.6f}" if epoch_train_loss_FUG else "N/A", 
-                                       RSP_loss=f"{t_loss_RSP:.6f}" if epoch_train_loss_RSP else "N/A",)
+                                        RSP_loss=f"{t_loss_RSP:.6f}" if epoch_train_loss_RSP else "N/A",)
 
     t2 = time.time()
     tqdm.write(f'Sample {name} RND training time: {t2 - t1:.2f}s')
