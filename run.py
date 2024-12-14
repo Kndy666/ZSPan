@@ -49,7 +49,7 @@ def run_main_scripts(satellite, sample_range):
             "main_SDE.py": {
                 "lr": 0.0005,
                 "epochs": 250,
-                "batch_size": 8,
+                "batch_size": 1,
                 "device": "cuda",
                 "satellite": satellite,
                 "file_path": "../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5",
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     print(f"Satellite type: {current_satellite}")
 
     # Define sample range
-    sample_range = (0, 20)
+    sample_range = 0
 
     # Measure execution time
     t_start = time.time()

@@ -86,6 +86,7 @@ def train_combined(training_data_loader, name, satellite):
     
     betas = [8, 1]
     min_loss_FUG, min_loss_RSP = float('inf'), float('inf')
+    cnt1, cnt2 = 0, 0
 
     t_start = time.time()
     for epoch in tqdm(range(args.epochs), desc="Epochs", colour='blue', leave=False):
@@ -98,11 +99,13 @@ def train_combined(training_data_loader, name, satellite):
                     batch["full"], model, optimizer_FUG, criterion_FUG, device, mode="FUG", aux_model=aux_model, betas=betas
                 )
                 epoch_losses_FUG.append(loss_FUG)
+                cnt1 += 1
             if "reduced" in batch:
                 loss_RSP = train_single_batch(
                     batch["reduced"], model, optimizer_RSP, criterion_RSP, device, mode="RSP"
                 )
                 epoch_losses_RSP.append(loss_RSP)
+                cnt2 += 1
         
         # Save best models
         if epoch_losses_FUG and (mean_loss := np.nanmean(epoch_losses_FUG)) < min_loss_FUG:
@@ -113,7 +116,7 @@ def train_combined(training_data_loader, name, satellite):
             save_checkpoint(model, name, satellite, "RSP")
         
         if epoch % 10 == 0:
-            tqdm.write(f"Sample {name}: FUG Loss: {min_loss_FUG:.6f}, RSP Loss: {min_loss_RSP:.6f}")
+            tqdm.write(f"Sample {name}: FUG Loss: {min_loss_FUG:.6f} RSP Loss: {min_loss_RSP:.6f} cnt1: {cnt1}, cnt2: {cnt2}")
 
     t_end = time.time()
     tqdm.write(f'Sample {name} training time: {t_end - t_start:.2f}s')
