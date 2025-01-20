@@ -1,0 +1,24 @@
+[wandb]
+project_name = "ZSPan"
+run_name = "test_run"
+note = "This is a test run for sample processing."
+enable_wandb = true
+
+[common]
+sample_range = [0, 20]
+device = "cuda"
+satellite = "wv3"
+file_path = "../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5"
+
+[sde]
+lr_sde = 0.0005
+epochs = 250
+batch_size = 1
+
+[rnd]
+lr_fug = 0.0005
+lr_rsp = 0.001
+epochs = 250
+batch_size = 8
+
+[test]

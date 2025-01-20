@@ -126,3 +126,5 @@ cython_debug/
 /origin
 /result
 /model
+
+/wandb
