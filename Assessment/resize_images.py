@@ -29,8 +29,8 @@ All rights reserved. This work should only be used for nonprofit purposes.
 """
 
 import numpy as np
-from imresize import imresize
-from MTF import MTF
+from .imresize import imresize
+from .MTF import MTF
 
 def resize_images(I_MS,I_PAN,ratio,sensor):
 

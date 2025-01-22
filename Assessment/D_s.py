@@ -37,8 +37,8 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-from interp23 import interp23
-from imresize import imresize
+from .interp23 import interp23
+from .imresize import imresize
 
 def D_s(I_F,I_MS,I_MS_LR,I_PAN,ratio,S,q):
 
@@ -70,14 +70,14 @@ def D_s(I_F,I_MS,I_MS_LR,I_PAN,ratio,S,q):
     
     D_s_index = 0
     for ii in range(Nb):
-        Q_high = ssim(I_F[:,:,ii],I_PAN, win_size=S)
+        Q_high = ssim(I_F[:,:,ii],I_PAN, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
 
         if (flag_orig_paper == 0):
             """ Opt. 1 (as toolbox 1.0) """
-            Q_low = ssim(I_MS[:,:,ii],pan_filt, win_size=S)
+            Q_low = ssim(I_MS[:,:,ii],pan_filt, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
         else:
             """ Opt. 2 (as paper QNR) """
-            Q_low = ssim(I_MS_LR[:,:,ii],pan_filt, win_size=S)
+            Q_low = ssim(I_MS_LR[:,:,ii],pan_filt, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
                         
         D_s_index = D_s_index + np.abs(Q_high-Q_low)**q
     

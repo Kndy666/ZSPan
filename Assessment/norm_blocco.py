@@ -15,7 +15,7 @@ def norm_blocco(x):
     c = np.std(x, ddof=1)
     
     if (c==0):
-    	c = 2.2204 * 10**(-16)
+        c = 2.2204 * 10**(-16)
     
     y = ((x - a)/c) + 1
     

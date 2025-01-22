@@ -33,10 +33,10 @@ All rights reserved. This work should only be used for nonprofit purposes.
          G. Vivone, M. Dalla Mura, A. Garzelli, R. Restaino, G. Scarpa, M. O. Ulfarsson, L. Alparone, and J. Chanussot, "A New Benchmark Based on Recent Advances in Multispectral Pansharpening: Revisiting Pansharpening With Classical and Emerging Pansharpening Methods", IEEE Geoscience and Remote Sensing Magazine, vol. 9, no. 1, pp. 53 - 81, March 2021.
 """
 import numpy as np
-from ERGAS import ERGAS 
-from SAM import SAM 
-from Q import Q
-from q2n import q2n
+from .ERGAS import ERGAS 
+from .SAM import SAM 
+from .Q import Q
+from .q2n import q2n
 
 def indexes_evaluation(I_F,I_GT,ratio,L,Qblocks_size,flag_cut_bounds,dim_cut,th_values):
     

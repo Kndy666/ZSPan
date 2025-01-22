@@ -21,7 +21,7 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import scipy.io
 import numpy as np
-from indexes_evaluation_FS import indexes_evaluation_FS
+from .indexes_evaluation_FS import indexes_evaluation_FS
 
 #dataset = "Toulouse_IKONOS_FR"
 #dataset = "NY1_WV3_FR"

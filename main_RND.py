@@ -13,6 +13,7 @@ from Toolbox.model_RND import FusionNet
 from Toolbox.model_SDE import Net_ms2pan
 from Toolbox.data_RND import Dataset_RSP, Dataset_FUG
 from Toolbox.wald_utilities import wald_protocol_v1, wald_protocol_v2
+from Assessment.indexes_evaluation_FS import indexes_evaluation_FS
 
 # ===================== Utility Functions ====================== #
 def save_checkpoint(model, name, satellite, stage):
@@ -21,6 +22,16 @@ def save_checkpoint(model, name, satellite, stage):
     model_out_path = os.path.join(model_dir, f'model_{stage}.pth')
     os.makedirs(model_dir, exist_ok=True)
     torch.save(model.state_dict(), model_out_path)
+
+def calc_indices(out, ms, pan, lms, satellite='WV3'):
+    out = torch.clamp(out, 0, 1)
+    ms = torch.clamp(ms, 0, 1)
+    pan = torch.clamp(pan, 0, 1)
+    lms = torch.clamp(lms, 0, 1)
+
+    HQNR, D_lambda, D_S = indexes_evaluation_FS(out.squeeze(0).permute(1, 2, 0).cpu().numpy(), ms.squeeze(0).permute(1, 2, 0).cpu().numpy(), pan.squeeze(0).squeeze(0).cpu().numpy(), 11, 0, lms.squeeze(0).permute(1, 2, 0).cpu().numpy(), satellite.upper(), 4, 32)
+
+    wandb.log({"indices/HQNR": HQNR, "indices/D_lambda": D_lambda, "indices/D_S": D_S})
 
 def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_model=None, betas=None):
     """Handle training for a single batch."""
@@ -45,6 +56,7 @@ def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_mod
     else:
         raise ValueError("Invalid mode specified")
     
+    calc_indices(out, ms, pan, lms)
     loss.backward()
     optimizer.step()
     return loss.item()

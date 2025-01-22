@@ -9,9 +9,9 @@ All rights reserved. This work should only be used for nonprofit purposes.
 """ Q2n aux. function """
 
 import numpy as np
-from onion_mult2D import onion_mult2D
-from onion_mult import onion_mult
-from norm_blocco import norm_blocco
+from .onion_mult2D import onion_mult2D
+from .onion_mult import onion_mult
+from .norm_blocco import norm_blocco
 
 def onions_quality(dat1,dat2,size1):
 

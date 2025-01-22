@@ -21,7 +21,7 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import scipy.io
 import numpy as np
-from indexes_evaluation import indexes_evaluation 
+from .indexes_evaluation import indexes_evaluation 
 
 #dataset = "Toulouse_IKONOS_RR"
 #dataset = "NY1_WV3_RR"

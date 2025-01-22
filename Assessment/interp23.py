@@ -46,7 +46,7 @@ def interp23(image, ratio):
     BaseCoeff = CDF23
     
     first = 1
-    for z in range(1,np.int(np.log2(ratio))+1):
+    for z in range(1,np.int32(np.log2(ratio))+1):
         if (b == 1):
             I1LRU = np.zeros(((2**z)*r, (2**z)*c))
         else:

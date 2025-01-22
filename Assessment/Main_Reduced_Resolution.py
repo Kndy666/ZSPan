@@ -8,9 +8,9 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import numpy as np
 import scipy.io
-from imresize import imresize
-from interp23 import interp23
-from resize_images import resize_images
+from .imresize import imresize
+from .interp23 import interp23
+from .resize_images import resize_images
 
 
 """

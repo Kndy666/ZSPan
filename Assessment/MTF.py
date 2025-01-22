@@ -32,7 +32,7 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import scipy
 import numpy as np
-from genMTF import genMTF
+from .genMTF import genMTF
 
 def MTF(I_MS,sensor,ratio):
     

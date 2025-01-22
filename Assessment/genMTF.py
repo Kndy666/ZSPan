@@ -28,7 +28,7 @@ All rights reserved. This work should only be used for nonprofit purposes.
 """
 
 import numpy as np
-from tools import fir_filter_wind, gaussian2d, kaiser2d
+from .tools import fir_filter_wind, gaussian2d, kaiser2d
 
 def genMTF(ratio, sensor, nbands):
     

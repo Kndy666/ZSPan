@@ -30,7 +30,7 @@ All rights reserved. This work should only be used for nonprofit purposes.
 
 import math
 import numpy as np
-from onions_quality import onions_quality
+from .onions_quality import onions_quality
 
 def q2n(I_GT, I_F, Q_blocks_size, Q_shift):
 

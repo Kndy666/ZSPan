@@ -39,8 +39,8 @@ All rights reserved. This work should only be used for nonprofit purposes.
 """
 
 import numpy as np
-from D_lambda_K import D_lambda_K
-from D_s import D_s
+from .D_lambda_K import D_lambda_K
+from .D_s import D_s
 
 def HQNR(ps_ms,ms,msexp,pan,S,sensor,ratio):
 
