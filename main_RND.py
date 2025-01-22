@@ -52,7 +52,7 @@ def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_mod
 ###################################################################
 # ------------------- Combined Train Function ------------------- #
 ###################################################################
-def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp, epochs, enable_wandb):
+def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb):
     # Initialize Models and Losses
     model = FusionNet().to(device)
     aux_model = Net_ms2pan().to(device)
@@ -79,7 +79,7 @@ def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp
                 )
                 epoch_losses_FUG.append(loss_FUG)
                 FUG_cnt += 1
-            if "reduced" in batch:
+            if "reduced" in batch and epoch > warmup:
                 loss_RSP = train_single_batch(
                     batch["reduced"], model, optimizer_RSP, criterion_RSP, device, mode="RSP"
                 )
@@ -111,7 +111,7 @@ def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp
 ###################################################################
 # ------------------- Main Function ----------------------------- #
 ###################################################################
-def main_run(lr_fug=None, lr_rsp=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
+def main_run(lr_fug=None, lr_rsp=None, warmup=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
     # ================== Constants =================== #
     SEED = 10
     torch.manual_seed(SEED)
@@ -123,6 +123,7 @@ def main_run(lr_fug=None, lr_rsp=None, epochs=None, batch_size=None, device=None
     parser = argparse.ArgumentParser()
     parser.add_argument("--lr_fug", type=float, default=0.0005, help="Learning rate for FUG")
     parser.add_argument("--lr_rsp", type=float, default=0.001, help="Learning rate for RSP")
+    parser.add_argument("--warmup", type=int, default=50, help="Warmup epochs for RSP")
     parser.add_argument("--epochs", type=int, default=250, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--device", type=str, default='cuda', help="Device to use")
@@ -131,10 +132,11 @@ def main_run(lr_fug=None, lr_rsp=None, epochs=None, batch_size=None, device=None
     parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
-    if any(arg is None for arg in [lr_fug, lr_rsp, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
+    if any(arg is None for arg in [lr_fug, lr_rsp, warmup, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
         cmd_args = parser.parse_args()
         lr_fug = cmd_args.lr_fug
         lr_rsp = cmd_args.lr_rsp
+        warmup = cmd_args.warmup
         epochs = cmd_args.epochs
         batch_size = cmd_args.batch_size
         device = cmd_args.device
@@ -154,7 +156,7 @@ def main_run(lr_fug=None, lr_rsp=None, epochs=None, batch_size=None, device=None
         pin_memory=True,
         collate_fn=dynamic_batch_size_collate_fn
     )
-    train_combined(training_data_loader, sample, satellite, device, lr_fug, lr_rsp, epochs, enable_wandb)
+    train_combined(training_data_loader, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
 
 if __name__ == "__main__":
     main_run()
