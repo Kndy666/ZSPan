@@ -1,8 +1,8 @@
 [wandb]
 project_name = "ZSPan"
-run_name = "warmup_test3"
-note = "warmup 20 epochs for RSP"
-enable_wandb = true
+run_name = "separated_test1"
+note = "separate FUG and RSP training with ratio 0.7"
+enable_wandb = false
 
 [common]
 sample_range = [0, 20]
@@ -18,6 +18,7 @@ batch_size = 1
 [rnd]
 lr_fug = 0.0005
 lr_rsp = 0.001
+ratio = 0.7
 warmup = 20
 epochs = 250
 batch_size = 8

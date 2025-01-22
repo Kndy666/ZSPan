@@ -11,7 +11,7 @@ import numpy as np
 from Toolbox.losses import FUG_Losses, RSP_Losses
 from Toolbox.model_RND import FusionNet
 from Toolbox.model_SDE import Net_ms2pan
-from Toolbox.data_RND import Dataset, dynamic_batch_size_collate_fn
+from Toolbox.data_RND import Dataset_RSP, Dataset_FUG
 from Toolbox.wald_utilities import wald_protocol_v1, wald_protocol_v2
 
 # ===================== Utility Functions ====================== #
@@ -24,7 +24,7 @@ def save_checkpoint(model, name, satellite, stage):
 
 def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_model=None, betas=None):
     """Handle training for a single batch."""
-    ms, lms, pan, _ = batch
+    ms, lms, pan = batch
     ms, lms, pan = ms.to(device), lms.to(device), pan.to(device)
     
     optimizer.zero_grad()
@@ -52,13 +52,30 @@ def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_mod
 ###################################################################
 # ------------------- Combined Train Function ------------------- #
 ###################################################################
-def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb):
+def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb):
+    rsp_data_loader = DataLoader(
+        dataset=Dataset_RSP(file_path, sample),
+        batch_size=batch_size,
+        shuffle=True,
+        drop_last=True,
+        num_workers=0,
+        pin_memory=True
+    )
+    fug_data_loader = DataLoader(
+        dataset=Dataset_FUG(file_path, sample),
+        batch_size=1,
+        shuffle=True,
+        drop_last=True,
+        num_workers=0,
+        pin_memory=True
+    )
+
     # Initialize Models and Losses
     model = FusionNet().to(device)
     aux_model = Net_ms2pan().to(device)
-    aux_model.load_state_dict(torch.load(os.path.join('model', satellite, str(name), 'model_SDE.pth')))
+    aux_model.load_state_dict(torch.load(os.path.join('model', satellite, str(sample), 'model_SDE.pth')))
     
-    criterion_FUG = FUG_Losses(device, os.path.join('model', satellite, str(name), 'model_SDE.pth'))
+    criterion_FUG = FUG_Losses(device, os.path.join('model', satellite, str(sample), 'model_SDE.pth'))
     criterion_RSP = RSP_Losses(device)
     optimizer_FUG = optim.Adam(model.parameters(), lr=lr_fug, betas=(0.9, 0.999))
     optimizer_RSP = optim.Adam(model.parameters(), lr=lr_rsp, betas=(0.9, 0.999))
@@ -71,20 +88,26 @@ def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp
     for epoch in tqdm(range(epochs), desc="Epochs", colour='blue', leave=False):
         model.train()
         epoch_losses_FUG, epoch_losses_RSP = [], []
-        
-        for batch in tqdm(training_data_loader, desc="Batches", leave=False):
-            if "full" in batch:
-                loss_FUG = train_single_batch(
-                    batch["full"], model, optimizer_FUG, criterion_FUG, device, mode="FUG", aux_model=aux_model, betas=betas
-                )
-                epoch_losses_FUG.append(loss_FUG)
-                FUG_cnt += 1
-            if "reduced" in batch and epoch > warmup:
+
+        if epoch < warmup:
+            selction = "FUG"
+        else:
+            selction = np.random.choice(["FUG", "RSP"], p=[ratio, 1 - ratio])
+
+        if selction == "RSP":
+            for batch in tqdm(rsp_data_loader, desc="Batches", leave=False):
                 loss_RSP = train_single_batch(
-                    batch["reduced"], model, optimizer_RSP, criterion_RSP, device, mode="RSP"
+                    batch, model, optimizer_RSP, criterion_RSP, device, mode="RSP"
                 )
                 epoch_losses_RSP.append(loss_RSP)
                 RSP_cnt += 1
+        else:
+            for batch in tqdm(fug_data_loader, desc="Batches", leave=False):
+                loss_FUG = train_single_batch(
+                    batch, model, optimizer_FUG, criterion_FUG, device, mode="FUG", aux_model=aux_model, betas=betas
+                )
+                epoch_losses_FUG.append(loss_FUG)
+                FUG_cnt += 1
         
         # Log epoch losses to W&B
         if enable_wandb:
@@ -97,26 +120,27 @@ def train_combined(training_data_loader, name, satellite, device, lr_fug, lr_rsp
         # Save best models
         if epoch_losses_FUG and (mean_loss := np.nanmean(epoch_losses_FUG)) < min_loss_FUG:
             min_loss_FUG = mean_loss
-            save_checkpoint(model, name, satellite, "FUG")
+            save_checkpoint(model, sample, satellite, "FUG")
         if epoch_losses_RSP and (mean_loss := np.nanmean(epoch_losses_RSP)) < min_loss_RSP:
             min_loss_RSP = mean_loss
-            save_checkpoint(model, name, satellite, "RSP")
+            save_checkpoint(model, sample, satellite, "RSP")
         
         if epoch % 10 == 0:
-            tqdm.write(f"Sample {name}: FUG Loss: {min_loss_FUG:.6f} RSP Loss: {min_loss_RSP:.6f} FUG_cnt: {FUG_cnt}, RSP_cnt: {RSP_cnt}")
+            tqdm.write(f"Sample {sample}: FUG Loss: {min_loss_FUG:.6f} RSP Loss: {min_loss_RSP:.6f} FUG_cnt: {FUG_cnt}, RSP_cnt: {RSP_cnt}")
 
     t_end = time.time()
-    tqdm.write(f'Sample {name} RND training time: {t_end - t_start:.2f}s')
+    tqdm.write(f'Sample {sample} RND training time: {t_end - t_start:.2f}s')
 
 ###################################################################
 # ------------------- Main Function ----------------------------- #
 ###################################################################
-def main_run(lr_fug=None, lr_rsp=None, warmup=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
+def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
     # ================== Constants =================== #
     SEED = 10
     torch.manual_seed(SEED)
     torch.cuda.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
+    np.random.seed(SEED)
     cudnn.deterministic = True
 
     # ========== Hyperparameters (Command Line) ========= #
@@ -124,6 +148,7 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, epochs=None, batch_size=None
     parser.add_argument("--lr_fug", type=float, default=0.0005, help="Learning rate for FUG")
     parser.add_argument("--lr_rsp", type=float, default=0.001, help="Learning rate for RSP")
     parser.add_argument("--warmup", type=int, default=50, help="Warmup epochs for RSP")
+    parser.add_argument("--ratio", type=float, default=0.7, help="Ratio of FUG to RSP")
     parser.add_argument("--epochs", type=int, default=250, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--device", type=str, default='cuda', help="Device to use")
@@ -132,10 +157,11 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, epochs=None, batch_size=None
     parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
-    if any(arg is None for arg in [lr_fug, lr_rsp, warmup, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
+    if any(arg is None for arg in [lr_fug, lr_rsp, warmup, ratio, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
         cmd_args = parser.parse_args()
         lr_fug = cmd_args.lr_fug
         lr_rsp = cmd_args.lr_rsp
+        ratio = cmd_args.ratio
         warmup = cmd_args.warmup
         epochs = cmd_args.epochs
         batch_size = cmd_args.batch_size
@@ -146,17 +172,7 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, epochs=None, batch_size=None
         enable_wandb = cmd_args.enable_wandb
 
     device = torch.device(device)
-    train_set = Dataset(file_path, sample)
-    training_data_loader = DataLoader(
-        dataset=train_set,
-        batch_size=batch_size,
-        shuffle=True,
-        drop_last=True,
-        num_workers=0,
-        pin_memory=True,
-        collate_fn=dynamic_batch_size_collate_fn
-    )
-    train_combined(training_data_loader, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
+    train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
 
 if __name__ == "__main__":
     main_run()

@@ -36,7 +36,7 @@ def process_batch(batch, model, criterion, optimizer, device):
 ###################################################################
 # ------------------- Train Function ---------------------------- #
 ###################################################################
-def train_sde(training_data_loader, name, satellite, model, criterion, optimizer, device, epochs, enable_wandb):
+def train_sde(training_data_loader, sample, satellite, model, criterion, optimizer, device, epochs, enable_wandb):
     """Train the model on the given dataset."""
     min_loss = float('inf')
     t_start = time.time()
@@ -55,11 +55,11 @@ def train_sde(training_data_loader, name, satellite, model, criterion, optimizer
             wandb.log({"SDE/loss": mean_loss})
 
         if mean_loss < min_loss:
-            save_checkpoint(model, name, satellite)
+            save_checkpoint(model, sample, satellite)
             min_loss = mean_loss
 
     t_end = time.time()
-    tqdm.write(f"Sample {name} SDE training completed in {t_end - t_start:.2f}s")
+    tqdm.write(f"Sample {sample} SDE training completed in {t_end - t_start:.2f}s")
 
 ###################################################################
 # ------------------- Main Function ----------------------------- #
@@ -70,6 +70,7 @@ def main_run(lr_sde=None, epochs=None, batch_size=None, device=None, satellite=N
     torch.manual_seed(SEED)
     torch.cuda.manual_seed(SEED)
     torch.cuda.manual_seed_all(SEED)
+    np.random.seed(SEED)
     cudnn.deterministic = True
 
     # ========== Hyperparameters (Command Line) ========= #
