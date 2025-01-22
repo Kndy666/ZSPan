@@ -38,7 +38,7 @@ class Dataset_FUG(data.Dataset):
 
         ms = torch.from_numpy(ms).float().squeeze(0)
         lms = torch.from_numpy(lms).float().squeeze(0)
-        pan = torch.from_numpy(pan).float().squeeze(0)
+        pan = torch.from_numpy(pan).float().squeeze(1)
 
         self.ms_crops = [ms]
         self.lms_crops = [lms]

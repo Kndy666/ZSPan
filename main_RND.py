@@ -89,19 +89,15 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
         model.train()
         epoch_losses_FUG, epoch_losses_RSP = [], []
 
-        if epoch < warmup:
-            selction = "FUG"
-        else:
-            selction = np.random.choice(["FUG", "RSP"], p=[ratio, 1 - ratio])
-
-        if selction == "RSP":
+        selction = np.random.choice(["FUG", "RSP"], p=[ratio, 1 - ratio])
+        if epoch > warmup:
             for batch in tqdm(rsp_data_loader, desc="Batches", leave=False):
                 loss_RSP = train_single_batch(
                     batch, model, optimizer_RSP, criterion_RSP, device, mode="RSP"
                 )
                 epoch_losses_RSP.append(loss_RSP)
                 RSP_cnt += 1
-        else:
+        if selction == "FUG":
             for batch in tqdm(fug_data_loader, desc="Batches", leave=False):
                 loss_FUG = train_single_batch(
                     batch, model, optimizer_FUG, criterion_FUG, device, mode="FUG", aux_model=aux_model, betas=betas
