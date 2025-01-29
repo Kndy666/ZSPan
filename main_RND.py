@@ -70,6 +70,8 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
         pin_memory=True
     )
 
+    device = torch.device(device)
+
     # Initialize Models and Losses
     model = FusionNet().to(device)
     aux_model = Net_ms2pan().to(device)
@@ -85,6 +87,13 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
     FUG_cnt, RSP_cnt = 0, 0
 
     t_start = time.time()
+
+    if enable_wandb:
+        wandb.define_metric(f"{sample}/FUG_loss", step_metric="epoch")
+        wandb.define_metric(f"{sample}/RSP_loss", step_metric="epoch")
+        wandb.define_metric(f"{sample}/FUG_cnt", step_metric="epoch")
+        wandb.define_metric(f"{sample}/RSP_cnt", step_metric="epoch")
+
     for epoch in tqdm(range(epochs), desc="Epochs", colour='blue', leave=False):
         model.train()
         epoch_losses_FUG, epoch_losses_RSP = [], []
@@ -104,14 +113,6 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
                 )
                 epoch_losses_FUG.append(loss_FUG)
                 FUG_cnt += 1
-        
-        # Log epoch losses to W&B
-        if enable_wandb:
-            if epoch_losses_FUG:
-                wandb.log({"RND/FUG_loss": np.nanmean(epoch_losses_FUG)}, commit=False)
-            if epoch_losses_RSP:
-                wandb.log({"RND/RSP_loss": np.nanmean(epoch_losses_RSP)}, commit=False)
-            wandb.log({"RND/FUG_cnt": FUG_cnt, "RND/RSP_cnt": RSP_cnt})
 
         # Save best models
         if epoch_losses_FUG and (mean_loss := np.nanmean(epoch_losses_FUG)) < min_loss_FUG:
@@ -119,7 +120,14 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
             save_checkpoint(model, sample, satellite, "FUG")
         if epoch_losses_RSP and (mean_loss := np.nanmean(epoch_losses_RSP)) < min_loss_RSP:
             min_loss_RSP = mean_loss
-            save_checkpoint(model, sample, satellite, "RSP")
+
+        # Log epoch losses to W&B
+        if enable_wandb:
+            if epoch_losses_FUG:
+                wandb.log({f"{sample}/FUG_loss": np.nanmean(epoch_losses_FUG), "epoch": epoch})
+            if epoch_losses_RSP:
+                wandb.log({f"{sample}/RSP_loss": np.nanmean(epoch_losses_RSP), "epoch": epoch})
+            wandb.log({f"{sample}/FUG_cnt": FUG_cnt, f"{sample}/RSP_cnt": RSP_cnt, "epoch": epoch})
         
         if epoch % 10 == 0:
             tqdm.write(f"Sample {sample}: FUG Loss: {min_loss_FUG:.6f} RSP Loss: {min_loss_RSP:.6f} FUG_cnt: {FUG_cnt}, RSP_cnt: {RSP_cnt}")
@@ -150,7 +158,7 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, bat
     parser.add_argument("--device", type=str, default='cuda', help="Device to use")
     parser.add_argument("--satellite", type=str, default='wv3', help="Satellite type")
     parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
-    parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
+    parser.add_argument("--sample", type=int, nargs='+', help="Sample index to process")
     parser.add_argument("--skip_exist", type=bool, default=False, help="Skip existing samples")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
@@ -169,12 +177,11 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, bat
         skip_exist = cmd_args.skip_exist
         enable_wandb = cmd_args.enable_wandb
 
-    if os.path.exists(os.path.join('model', satellite, str(sample), 'model_FUG.pth')) and skip_exist:
-        tqdm.write(f"Sample {sample} RND model already exists. Skipping...")
-        return
-
-    device = torch.device(device)
-    train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
+    for i in tqdm(sample, desc="Samples", colour='green'):
+        if os.path.exists(os.path.join('model', satellite, str(i), 'model_FUG.pth')) and skip_exist:
+            tqdm.write(f"Sample {i} RND model already exists. Skipping...")
+            continue
+        train_combined(file_path, batch_size, ratio, i, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
 
 if __name__ == "__main__":
     main_run()

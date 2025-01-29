@@ -1,7 +1,7 @@
 [wandb]
 project_name = "ZSPan"
-run_name = "separated_test2"
-note = "separate FUG and RSP training with ratio 0.7 same as warmup"
+run_name = "initial_test"
+note = "initial_test"
 enable_wandb = true
 
 [common]

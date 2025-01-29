@@ -21,7 +21,7 @@ def run_pipeline(config):
     common_config.pop('sample_range', None)
 
     project_name = config['wandb']['project_name']
-    run_name_prefix = config['wandb']['run_name']
+    run_name = config['wandb']['run_name']
     note = config['wandb']['note']
     enable_wandb = config['wandb'].get('enable_wandb', False)
 
@@ -39,50 +39,49 @@ def run_pipeline(config):
     for exclude_key in exclude_common_evaluate:
         params_evaluate.pop(exclude_key, None)
 
-    for sample in tqdm(sample_range, desc="Samples", colour='green'):
-        params_sde = {**common_config, **config['sde'], 'sample': sample, 'enable_wandb': enable_wandb}
-        params_rnd = {**common_config, **config['rnd'], 'sample': sample, 'enable_wandb': enable_wandb}
-        params_test = {**common_config, **config['test'], 'sample': sample, 'enable_wandb': enable_wandb}
-        params_evaluate = {**common_config, **config['evaluate'], 'sample': sample, 'enable_wandb': enable_wandb}
+    params_sde = {**common_config, **config['sde'], 'sample': sample_range, 'enable_wandb': enable_wandb}
+    params_rnd = {**common_config, **config['rnd'], 'sample': sample_range, 'enable_wandb': enable_wandb}
+    params_test = {**common_config, **config['test'], 'sample': sample_range, 'enable_wandb': enable_wandb}
+    params_evaluate = {**common_config, **config['evaluate'], 'sample': sample_range, 'enable_wandb': enable_wandb}
 
-        prefix_dict = {
-            "sde": params_sde,
-            "rnd": params_rnd,
-            "test": params_test,
-            "evaluate": params_evaluate
-        }
+    prefix_dict = {
+        "sde": params_sde,
+        "rnd": params_rnd,
+        "test": params_test,
+        "evaluate": params_evaluate
+    }
 
-        # Combine parameters into a config dictionary for W&B logging
-        wb_config = {}
-        for script, params in prefix_dict.items():
-            for key, value in params.items():
-                if key in ["batch_size", "epochs"]:
-                    new_key = f"{script}_{key}"
-                    wb_config[new_key] = value
-                else:
-                    wb_config[key] = value
+    # Combine parameters into a config dictionary for W&B logging
+    wb_config = {}
+    for script, params in prefix_dict.items():
+        for key, value in params.items():
+            if key in ["batch_size", "epochs"]:
+                new_key = f"{script}_{key}"
+                wb_config[new_key] = value
+            else:
+                wb_config[key] = value
 
-        # Log configuration to W&B
+    # Log configuration to W&B
+    if enable_wandb:
+        run = wandb.init(project=project_name, name=run_name, config=wandb.helper.parse_config(wb_config, exclude=("file_path", "device", "enable_wandb", "sample")), notes=note)
+        wandb.define_metric("epoch")
+
+    # Run SDE, RND, Test models sequentially and then evaluate
+    try:
+        tqdm.write(f"Running SDE for sample {sample_range}...")
+        main_sde_run(**params_sde)
+        tqdm.write(f"Running RND for sample {sample_range}...")
+        main_rnd_run(**params_rnd)
+        tqdm.write(f"Running Test for sample {sample_range}...")
+        main_test_run(**params_test)
+        tqdm.write(f"Evaluating model for sample {sample_range}...")
+        main_evaluate_run(**params_evaluate)
+    except Exception as e:
+        tqdm.write(f"Error for sample {sample_range}: {e}")
+        success = False
+    finally:
         if enable_wandb:
-            run = wandb.init(project=project_name, name=f"{run_name_prefix}_{sample}", config=wandb.helper.parse_config(wb_config, exclude=("file_path", "device", "enable_wandb")), group=f"{project_name}_{run_name_prefix}", notes=note)
-
-        # Run SDE, RND, Test models sequentially and then evaluate
-        try:
-            tqdm.write(f"Running SDE for sample {sample}...")
-            main_sde_run(**params_sde)
-            tqdm.write(f"Running RND for sample {sample}...")
-            main_rnd_run(**params_rnd)
-            tqdm.write(f"Running Test for sample {sample}...")
-            main_test_run(**params_test)
-            tqdm.write(f"Evaluating model for sample {sample}...")
-            main_evaluate_run(**params_evaluate)
-        except Exception as e:
-            tqdm.write(f"Error for sample {sample}: {e}")
-            success = False
-            break
-        finally:
-            if enable_wandb:
-                run.finish()
+            run.finish()
 
     return success
 

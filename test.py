@@ -9,10 +9,10 @@ import wandb
 from tqdm import tqdm
 
 # ===================== Utility Functions ====================== #
-def load_model_weights(model, satellite, name, enable_wandb):
+def load_model_weights(model, satellite, sample, enable_wandb):
     """Load model weights from a checkpoint."""
-    ckpt_path = os.path.join('model', satellite, str(name), 'model_FUG.pth')
-    base_path = os.path.join("model", satellite, str(name))
+    ckpt_path = os.path.join('model', satellite, str(sample), 'model_FUG.pth')
+    base_path = os.path.join("model", satellite)
     if not os.path.exists(ckpt_path):
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
     if enable_wandb:
@@ -20,29 +20,32 @@ def load_model_weights(model, satellite, name, enable_wandb):
     weight = torch.load(ckpt_path)
     model.load_state_dict(weight)
 
-def preprocess_data(file_path, name, device):
+def preprocess_data(file_path, sample, device):
     """Load and preprocess data from the dataset."""
     with h5py.File(file_path, 'r') as dataset:
-        ms = np.array(dataset['ms'][name], dtype=np.float32) / 2047.0
-        lms = np.array(dataset['lms'][name], dtype=np.float32) / 2047.0
-        pan = np.array(dataset['pan'][name], dtype=np.float32) / 2047.0
+        ms = np.array(dataset['ms'][sample], dtype=np.float32) / 2047.0
+        lms = np.array(dataset['lms'][sample], dtype=np.float32) / 2047.0
+        pan = np.array(dataset['pan'][sample], dtype=np.float32) / 2047.0
 
     ms = torch.unsqueeze(torch.from_numpy(ms).float(), dim=0).to(device)
     lms = torch.unsqueeze(torch.from_numpy(lms).float(), dim=0).to(device)
     pan = torch.unsqueeze(torch.from_numpy(pan).float(), dim=0).to(device)
     return ms, lms, pan
 
-def save_output(output, satellite, name):
+def save_output(output, satellite, sample):
     """Save the output to a .mat file."""
     save_path = os.path.join('result', satellite)
     os.makedirs(save_path, exist_ok=True)
-    sio.savemat(os.path.join(save_path, f"output_mulExm_{str(name)}.mat"), {'sr': output})
+    sio.savemat(os.path.join(save_path, f"output_mulExm_{str(sample)}.mat"), {'sr': output})
 
-def test_fug(model, satellite, file_path, name, device, enable_wandb):
+def test_fug(satellite, file_path, sample, device, enable_wandb):
     """Test the FusionNet model on a given sample."""
-    load_model_weights(model, satellite, name, enable_wandb)
+    device = torch.device(device)
+    model = FusionNet().to(device)
 
-    ms, lms, pan = preprocess_data(file_path, name, device)
+    load_model_weights(model, satellite, sample, enable_wandb)
+
+    ms, lms, pan = preprocess_data(file_path, sample, device)
 
     model.eval()
     with torch.no_grad():
@@ -50,14 +53,14 @@ def test_fug(model, satellite, file_path, name, device, enable_wandb):
         out = res + lms
         I_SR = torch.squeeze(out * 2047).permute(1, 2, 0).cpu().numpy()  # HxWxC
 
-    save_output(I_SR, satellite, name)
+    save_output(I_SR, satellite, sample)
 
 def main_run(satellite=None, file_path=None, sample=None, device=None, enable_wandb=None):
     # ================== Constants =================== #
     parser = argparse.ArgumentParser()
     parser.add_argument("--satellite", type=str, default='wv3', help="Satellite type")
     parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
-    parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
+    parser.add_argument("--sample", type=int, nargs='+', help="Sample index to process")
     parser.add_argument("--device", type=str, default='cuda', help="Device to use")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
@@ -69,12 +72,11 @@ def main_run(satellite=None, file_path=None, sample=None, device=None, enable_wa
         device = cmd_args.device
         enable_wandb = cmd_args.enable_wandb
 
-    device = torch.device(device)
-    model = FusionNet().to(device)
-    try:
-        test_fug(model, satellite, file_path, sample, device, enable_wandb)
-    except FileNotFoundError as e:
-        tqdm.write(f"Sample {sample} skipped: {e}")
+    for i in tqdm(sample, desc="Samples", colour='green'):
+        try:
+            test_fug(satellite, file_path, i, device, enable_wandb)
+        except FileNotFoundError as e:
+            tqdm.write(f"Sample {i} skipped: {e}")
 
 if __name__ == "__main__":
     main_run()
