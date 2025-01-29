@@ -36,9 +36,26 @@ All rights reserved. This work should only be used for nonprofit purposes.
 """
 
 import numpy as np
-from skimage.metrics import structural_similarity as ssim
+from skimage.util import view_as_blocks
 from .interp23 import interp23
 from .imresize import imresize
+
+def uqi(x, y):
+    x = x.flatten()
+    y = y.flatten()
+    
+    mx = np.mean(x)
+    my = np.mean(y)
+    
+    cov_matrix = np.cov(x, y, ddof=1)
+    cov_xy = cov_matrix[0, 1]
+    var_x = cov_matrix[0, 0]
+    var_y = cov_matrix[1, 1]
+    
+    numerator = 4 * cov_xy * mx * my
+    denominator = (var_x + var_y) * (mx**2 + my**2)
+    
+    return numerator / denominator
 
 def D_s(I_F,I_MS,I_MS_LR,I_PAN,ratio,S,q):
 
@@ -53,11 +70,11 @@ def D_s(I_F,I_MS,I_MS_LR,I_PAN,ratio,S,q):
     M = I_F.shape[1]
     Nb = I_F.shape[2]
     
-    if (np.remainder(N,S-1) != 0):
+    if (np.remainder(N,S) != 0):
         print("Number of rows must be multiple of the block size")
         return -1
     
-    if (np.remainder(M,S-1) != 0):
+    if (np.remainder(M,S) != 0):
         print("Number of columns must be multiple of the block size")
         return -1
 
@@ -69,18 +86,42 @@ def D_s(I_F,I_MS,I_MS_LR,I_PAN,ratio,S,q):
         pan_filt = imresize(I_PAN,1/ratio)
     
     D_s_index = 0
-    for ii in range(Nb):
-        Q_high = ssim(I_F[:,:,ii],I_PAN, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
+    for i in range(Nb):
+        band1 = I_F[:, :, i]
+        band2 = I_PAN
+        
+        blocks_band1 = view_as_blocks(band1, block_shape=(S, S))
+        blocks_band2 = view_as_blocks(band2, block_shape=(S, S))
 
-        if (flag_orig_paper == 0):
-            """ Opt. 1 (as toolbox 1.0) """
-            Q_low = ssim(I_MS[:,:,ii],pan_filt, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
+        Qmap_high = np.array([[uqi(block_band1, block_band2) 
+                      for block_band1, block_band2 in zip(row_band1, row_band2)] 
+                     for row_band1, row_band2 in zip(blocks_band1, blocks_band2)])    
+        Q_high = np.mean(Qmap_high)
+
+        if flag_orig_paper == 0:
+            band1 = I_MS[:, :, i]
+            band2 = pan_filt
+
+            blocks_band1 = view_as_blocks(band1, block_shape=(S, S))
+            blocks_band2 = view_as_blocks(band2, block_shape=(S, S))
+
+            Qmap_low = np.array([[uqi(block_band1, block_band2) 
+                      for block_band1, block_band2 in zip(row_band1, row_band2)] 
+                     for row_band1, row_band2 in zip(blocks_band1, blocks_band2)])
         else:
-            """ Opt. 2 (as paper QNR) """
-            Q_low = ssim(I_MS_LR[:,:,ii],pan_filt, win_size=S, data_range=1, gaussian_weights=True, sigma=1.5, use_sample_covariance=False)
-                        
-        D_s_index = D_s_index + np.abs(Q_high-Q_low)**q
-    
+            band1 = I_MS_LR[:, :, i]
+            band2 = pan_filt
+            
+            blocks_band1 = view_as_blocks(band1, block_shape=(S, S))
+            blocks_band2 = view_as_blocks(band2, block_shape=(S, S))
+
+            Qmap_low = np.array([[uqi(block_band1, block_band2) 
+                      for block_band1, block_band2 in zip(row_band1, row_band2)] 
+                     for row_band1, row_band2 in zip(blocks_band1, blocks_band2)])
+        Q_low = np.mean(Qmap_low)
+        
+        D_s_index += np.abs(Q_high - Q_low)**q
+
     D_s_index = (D_s_index/Nb)**(1/q)
 
     return D_s_index 

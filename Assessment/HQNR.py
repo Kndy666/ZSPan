@@ -44,12 +44,9 @@ from .D_s import D_s
 
 def HQNR(ps_ms,ms,msexp,pan,S,sensor,ratio):
 
-    D_lambda = D_lambda_K(ps_ms,ms,ratio,sensor,S)
+    D_lambda = D_lambda_K(ps_ms.copy(),msexp.copy(),ratio,sensor,S)
 
-    if np.remainder(S,2) == 0: 
-        D_S = D_s(ps_ms,msexp,ms,pan,ratio,S+1,1)
-    else:
-        D_S = D_s(ps_ms,msexp,ms,pan,ratio,S,1)
+    D_S = D_s(ps_ms,msexp,ms,pan,ratio,S,1)
 
     HQNR_index = (1 - D_lambda) * (1 - D_S)
 

@@ -64,7 +64,7 @@ def train_sde(training_data_loader, sample, satellite, model, criterion, optimiz
 ###################################################################
 # ------------------- Main Function ----------------------------- #
 ###################################################################
-def main_run(lr_sde=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
+def main_run(lr_sde=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, skip_exist=None, enable_wandb=None):
     # ================== Constants =================== #
     SEED = 10
     torch.manual_seed(SEED)
@@ -82,9 +82,10 @@ def main_run(lr_sde=None, epochs=None, batch_size=None, device=None, satellite=N
     parser.add_argument("--satellite", type=str, default='wv3', help="Satellite type")
     parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
     parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
+    parser.add_argument("--skip_exist", type=bool, default=False, help="Skip existing samples")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
-    if any(arg is None for arg in [lr_sde, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
+    if any(arg is None for arg in [lr_sde, epochs, batch_size, device, satellite, file_path, sample, skip_exist, enable_wandb]):
         cmd_args = parser.parse_args()
         lr_sde = cmd_args.lr_sde
         epochs = cmd_args.epochs
@@ -93,8 +94,12 @@ def main_run(lr_sde=None, epochs=None, batch_size=None, device=None, satellite=N
         satellite = cmd_args.satellite
         file_path = cmd_args.file_path
         sample = cmd_args.sample
+        skip_exist = cmd_args.skip_exist
         enable_wandb = cmd_args.enable_wandb
 
+    if os.path.exists(os.path.join('model', satellite, str(sample), 'model_SDE.pth')) and skip_exist:
+        tqdm.write(f"Sample {sample} SDE model already exists. Skipping...")
+        return
     device = torch.device(device)
     model = Net_ms2pan().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr_sde, betas=(0.9, 0.999))

@@ -14,6 +14,7 @@ file_path = "../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanC
 lr_sde = 0.0005
 epochs = 250
 batch_size = 1
+skip_exist = true
 
 [rnd]
 lr_fug = 0.0005
@@ -22,5 +23,8 @@ ratio = 0.7
 warmup = 20
 epochs = 250
 batch_size = 8
+skip_exist = true
 
 [test]
+
+[evaluate]

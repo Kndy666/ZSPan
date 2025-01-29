@@ -5,6 +5,7 @@ from tqdm import tqdm
 from main_SDE import main_run as main_sde_run
 from main_RND import main_run as main_rnd_run
 from test import main_run as main_test_run
+from evaluate import main_run as main_evaluate_run
 
 def run_pipeline(config):
     """
@@ -27,6 +28,7 @@ def run_pipeline(config):
     exclude_common_sde = config['sde'].get('exclude_common', [])
     exclude_common_rnd = config['rnd'].get('exclude_common', [])
     exclude_common_test = config['test'].get('exclude_common', [])
+    exclude_common_evaluate = config['evaluate'].get('exclude_common', [])
 
     for exclude_key in exclude_common_sde:
         params_sde.pop(exclude_key, None)
@@ -34,16 +36,20 @@ def run_pipeline(config):
         params_rnd.pop(exclude_key, None)
     for exclude_key in exclude_common_test:
         params_test.pop(exclude_key, None)
+    for exclude_key in exclude_common_evaluate:
+        params_evaluate.pop(exclude_key, None)
 
     for sample in tqdm(sample_range, desc="Samples", colour='green'):
         params_sde = {**common_config, **config['sde'], 'sample': sample, 'enable_wandb': enable_wandb}
         params_rnd = {**common_config, **config['rnd'], 'sample': sample, 'enable_wandb': enable_wandb}
         params_test = {**common_config, **config['test'], 'sample': sample, 'enable_wandb': enable_wandb}
+        params_evaluate = {**common_config, **config['evaluate'], 'sample': sample, 'enable_wandb': enable_wandb}
 
         prefix_dict = {
             "sde": params_sde,
             "rnd": params_rnd,
-            "test": params_test
+            "test": params_test,
+            "evaluate": params_evaluate
         }
 
         # Combine parameters into a config dictionary for W&B logging
@@ -60,7 +66,7 @@ def run_pipeline(config):
         if enable_wandb:
             run = wandb.init(project=project_name, name=f"{run_name_prefix}_{sample}", config=wandb.helper.parse_config(wb_config, exclude=("file_path", "device", "enable_wandb")), group=f"{project_name}_{run_name_prefix}", notes=note)
 
-        # Run SDE and RND models sequentially
+        # Run SDE, RND, Test models sequentially and then evaluate
         try:
             tqdm.write(f"Running SDE for sample {sample}...")
             main_sde_run(**params_sde)
@@ -68,6 +74,8 @@ def run_pipeline(config):
             main_rnd_run(**params_rnd)
             tqdm.write(f"Running Test for sample {sample}...")
             main_test_run(**params_test)
+            tqdm.write(f"Evaluating model for sample {sample}...")
+            main_evaluate_run(**params_evaluate)
         except Exception as e:
             tqdm.write(f"Error for sample {sample}: {e}")
             success = False

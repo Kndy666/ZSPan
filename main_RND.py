@@ -13,7 +13,6 @@ from Toolbox.model_RND import FusionNet
 from Toolbox.model_SDE import Net_ms2pan
 from Toolbox.data_RND import Dataset_RSP, Dataset_FUG
 from Toolbox.wald_utilities import wald_protocol_v1, wald_protocol_v2
-from Assessment.indexes_evaluation_FS import indexes_evaluation_FS
 
 # ===================== Utility Functions ====================== #
 def save_checkpoint(model, name, satellite, stage):
@@ -22,16 +21,6 @@ def save_checkpoint(model, name, satellite, stage):
     model_out_path = os.path.join(model_dir, f'model_{stage}.pth')
     os.makedirs(model_dir, exist_ok=True)
     torch.save(model.state_dict(), model_out_path)
-
-def calc_indices(out, ms, pan, lms, satellite='WV3'):
-    out = torch.clamp(out, 0, 1)
-    ms = torch.clamp(ms, 0, 1)
-    pan = torch.clamp(pan, 0, 1)
-    lms = torch.clamp(lms, 0, 1)
-
-    HQNR, D_lambda, D_S = indexes_evaluation_FS(out.squeeze(0).permute(1, 2, 0).cpu().numpy(), ms.squeeze(0).permute(1, 2, 0).cpu().numpy(), pan.squeeze(0).squeeze(0).cpu().numpy(), 11, 0, lms.squeeze(0).permute(1, 2, 0).cpu().numpy(), satellite.upper(), 4, 32)
-
-    wandb.log({"indices/HQNR": HQNR, "indices/D_lambda": D_lambda, "indices/D_S": D_S})
 
 def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_model=None, betas=None):
     """Handle training for a single batch."""
@@ -56,7 +45,6 @@ def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_mod
     else:
         raise ValueError("Invalid mode specified")
     
-    calc_indices(out, ms, pan, lms)
     loss.backward()
     optimizer.step()
     return loss.item()
@@ -142,7 +130,7 @@ def train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_f
 ###################################################################
 # ------------------- Main Function ----------------------------- #
 ###################################################################
-def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, enable_wandb=None):
+def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, batch_size=None, device=None, satellite=None, file_path=None, sample=None, skip_exist=None, enable_wandb=None):
     # ================== Constants =================== #
     SEED = 10
     torch.manual_seed(SEED)
@@ -163,9 +151,10 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, bat
     parser.add_argument("--satellite", type=str, default='wv3', help="Satellite type")
     parser.add_argument("--file_path", type=str, default=r"../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5", help="Path to the dataset file")
     parser.add_argument("--sample", type=int, required=True, help="Sample index to process")
+    parser.add_argument("--skip_exist", type=bool, default=False, help="Skip existing samples")
     parser.add_argument("--enable_wandb", type=bool, default=False, help="Enable W&B logging")
 
-    if any(arg is None for arg in [lr_fug, lr_rsp, warmup, ratio, epochs, batch_size, device, satellite, file_path, sample, enable_wandb]):
+    if any(arg is None for arg in [lr_fug, lr_rsp, warmup, ratio, epochs, batch_size, device, satellite, file_path, sample, skip_exist, enable_wandb]):
         cmd_args = parser.parse_args()
         lr_fug = cmd_args.lr_fug
         lr_rsp = cmd_args.lr_rsp
@@ -177,7 +166,12 @@ def main_run(lr_fug=None, lr_rsp=None, warmup=None, ratio=None, epochs=None, bat
         satellite = cmd_args.satellite
         file_path = cmd_args.file_path
         sample = cmd_args.sample
+        skip_exist = cmd_args.skip_exist
         enable_wandb = cmd_args.enable_wandb
+
+    if os.path.exists(os.path.join('model', satellite, str(sample), 'model_FUG.pth')) and skip_exist:
+        tqdm.write(f"Sample {sample} RND model already exists. Skipping...")
+        return
 
     device = torch.device(device)
     train_combined(file_path, batch_size, ratio, sample, satellite, device, lr_fug, lr_rsp, warmup, epochs, enable_wandb)
