@@ -20,7 +20,7 @@ class Net_ms2pan(nn.Module):
     def __init__(self):
         super(Net_ms2pan, self).__init__()
         self.ups = nn.UpsamplingBilinear2d(scale_factor=4)
-        self.net = nn.Sequential(nn.Linear(8, 32),
+        self.net = nn.Sequential(nn.Linear(4, 32),
                                  nn.Sigmoid(),
                                  nn.Linear(32, 32),
                                  nn.Sigmoid(),

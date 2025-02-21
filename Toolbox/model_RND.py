@@ -53,7 +53,7 @@ class FusionNet(nn.Module):
         super(FusionNet, self).__init__()
 
         channel = 32
-        spectral_num = 8
+        spectral_num = 4
 
         # ConvTranspose2d: output = (input - 1)*stride + outpading - 2*padding + kernelsize
 
@@ -80,7 +80,7 @@ class FusionNet(nn.Module):
 
     def forward(self, x, y):  # x= hp of ms; y = hp of pan
 
-        pan_concat = torch.cat([y, y, y, y, y, y, y, y], 1)  # Bsx8x64x64
+        pan_concat = torch.cat([y, y, y, y], 1)  # Bsx8x64x64
         input = torch.sub(pan_concat, x)  # Bsx8x64x64
         rs = self.relu(self.conv1(input))  # Bsx32x64x64
 
@@ -127,7 +127,7 @@ def variance_scaling_initializer(tensor):
 def summaries(model, writer=None, grad=False):
     if grad:
         from torchsummary import summary
-        summary(model, input_size=[(8, 64, 64), (1, 64, 64)], batch_size=1)
+        summary(model, input_size=[(4, 64, 64), (1, 64, 64)], batch_size=1)
     else:
         for name, param in model.named_parameters():
             if param.requires_grad:

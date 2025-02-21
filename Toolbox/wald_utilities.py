@@ -154,7 +154,7 @@ def interp23tap_GPU(img, ratio):
 
     return img
 
-def wald_protocol(ms,pan,ratio,sensor, channels=8):
+def wald_protocol(ms,pan,ratio,sensor, channels=4):
     
     mtf_kernel = genMTF(ratio, sensor)
 
@@ -187,7 +187,7 @@ def wald_protocol(ms,pan,ratio,sensor, channels=8):
 
     return ms_lr, pan_lr
 
-def wald_protocol_v1(ms, pan, ratio, sensor, channels=8):
+def wald_protocol_v1(ms, pan, ratio, sensor, channels=4):
 
     def genMTF_MS():
         mtf_kernel = genMTF(ratio, sensor)
@@ -243,7 +243,7 @@ def wald_protocol_v1(ms, pan, ratio, sensor, channels=8):
 
     return genMTF_MS()#ms_lr, pan_lr
 
-def wald_protocol_v2(ms, pan, ratio, sensor, channels=8):
+def wald_protocol_v2(ms, pan, ratio, sensor, channels=4):
 
     def genMTF_MS():
         mtf_kernel = genMTF(ratio, sensor)

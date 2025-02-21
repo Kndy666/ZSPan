@@ -1,29 +1,29 @@
 [wandb]
 project_name = "ZSPan"
-run_name = "separated_test2"
-note = "separate FUG and RSP training with ratio 0.7 same as warmup"
-enable_wandb = true
+run_name = "datatest"
+note = "separate FUG and RSP training with ratio 0.77 same as warmup"
+enable_wandb = false
 
 [common]
 sample_range = [0, 20]
 device = "cuda"
-satellite = "wv3"
-file_path = "../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_wv3_OrigScale_multiExm1.h5"
+satellite = "qb"
+file_path = "../02-Test-toolbox-for-traditional-and-DL(Matlab)-1/1_TestData/PanCollection/test_qb_OrigScale_multiExm1.h5"
 
 [sde]
 lr_sde = 0.0005
 epochs = 250
 batch_size = 1
-skip_exist = true
+skip_exist = false
 
 [rnd]
 lr_fug = 0.0005
 lr_rsp = 0.001
-ratio = 0.7
+ratio = 0.77
 warmup = 20
 epochs = 250
 batch_size = 8
-skip_exist = true
+skip_exist = false
 
 [test]
 

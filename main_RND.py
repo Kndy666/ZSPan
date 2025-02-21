@@ -32,13 +32,13 @@ def train_single_batch(batch, model, optimizer, criterion, device, mode, aux_mod
     if mode == "FUG":
         res = model(lms, pan)
         out = res + lms
-        dsr = wald_protocol_v1(out, pan, 4, 'WV3')
+        dsr = wald_protocol_v1(out, pan, 4, 'QB')
         dpan = aux_model(out)
         loss1, loss2 = criterion(out, pan, ms, dsr, dpan)
         loss = betas[0] * loss1 + betas[1] * loss2
     elif mode == "RSP":
-        lms_rr = wald_protocol_v1(lms, pan, 4, 'WV3')
-        pan_rr = wald_protocol_v2(ms, pan, 4, 'WV3')
+        lms_rr = wald_protocol_v1(lms, pan, 4, 'QB')
+        pan_rr = wald_protocol_v2(ms, pan, 4, 'QB')
         res = model(lms_rr, pan_rr)
         out = lms_rr + res
         loss = criterion(out, ms)
