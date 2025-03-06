@@ -40,7 +40,7 @@ merged = merged.reset_index()
 merged = merged.drop(columns=["Step"])
 
 # 指定列的顺序
-desired_columns = ["0warm", "5warm", "10warm", "15warm", "20warm", "25warm", "30warm", "35warm", "40warm"]
+desired_columns = ["fullratio_loss_0.1","fullratio_loss_0.2","fullratio_loss_0.6","fullratio_loss_0.8","fullratio_loss_0.9"]
 
 # 按照所需顺序排列列
 merged = merged[desired_columns]
